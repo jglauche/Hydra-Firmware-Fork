@@ -1,0 +1,67 @@
+
+//
+// Hydra Firmware for controlling cartesian positioing robot
+// comunicates via G, M, and T codes sent from computer host software
+//
+// Author: Clayton Webster
+// Date: March 2010
+//
+
+/*
+
+Gcode References
+G0 - rapid positioning, input X Y Z, syntax: G0 X1.25 Y0.025 Z0.0
+G1 - linear interpolation, input X Y Z F(feedrate in inch/min or mm/min depending on unit sys), syntax: G1 X1.5 Y0.5 Z0.0 F10.0
+G4 - dwell, input P(dwell time in ms), syntax: G4 P115.0
+G20 - inch unit system
+G21 - millimeter unit system
+G30 - set reference point 1
+G31 - return to reference point 1
+G32 - set reference point 2
+G33 - return to reference point 2
+G90 - absolute coordinate system
+G91 - incremental coordinate system
+G92 - set current position, input X Y Z, syntax: G92 X0 Y1 (set current position as X=0.0, Y=1.0, and Z remains unchanged)
+
+Mcode Reference
+M2 - stop program
+M3 - spindle on, CW
+M4 - spindle on, CCW
+M5 - spindle off
+M44 - enable min software endstops
+M45 - disable min software endstops
+M46 - enable max software endstops
+M47 - disable max software endstops
+M48 - max speed override, input F(new max feedrate), syntax: M48 F100.0
+M49 - disable speed override
+M50 - change step mode, input X Y Z, syntax: M50 X1 Y1 Z4 (set x and y axes to full torque and use 4x microstepping on z)
+M60 - turn acceleration on
+M61 - turn acceleration off
+M70 - debugging mode on
+M71 - debugging mode off
+M101 - extruder on, forward
+M102 - extruder on, backward
+M103 - extruder off
+M104 - set extruder temperature, input S, syntax: M104 S200 (set target temp to 200 deg C)
+M106 - turn fan on
+M107 - turn fan off
+M201 - turn light on
+M202 - turn light off
+
+Tcode Reference
+T0 - switch to tool 0, default tool by which all other tool offsets are measured from
+T1 - switch to tool 1
+T2 - switch to tool 2
+T3 - switch to tool 3
+T10 - home all z axes, lower each z axis until it hits its software/hardware min endstops
+T11 - level all z axes, this will move all z axes so the toolhead tips are all at the same height assuming the toolchanger array values are set correctly
+T14 - set desired active toolhead clearance, input P, syntax: T14 P0.5 (set clearance to 0.5 inches), required for milling or any other operation where the toolhead tip drops below workpiece height
+T15 - move all non-active toolheads to achieve desired active toolhead clearance
+T20 - complete toolhead startup routine
+
+
+Please note that parameters defined below should be reviewed and changed to match your application.  Variables in all capital leters are those which are constant
+and will not change without redefining them below and then recompiling the firmware.  Some variables which are not constants can be changed in real-time via
+the G, M, and T codes listed above.
+
+*/

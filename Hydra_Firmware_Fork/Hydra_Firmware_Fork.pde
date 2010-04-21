@@ -1,82 +1,10 @@
 
-//
-// Hydra Firmware for controlling cartesian positioing robot
-// comunicates via G, M, and T codes sent from computer host software
-//
-// Author: Clayton Webster
-// Date: March 2010
-//
+//Hydra_Firmware_fork
 
-/*
-
-Gcode References
-G0 - rapid positioning, input X Y Z, syntax: G0 X1.25 Y0.025 Z0.0
-G1 - linear interpolation, input X Y Z F(feedrate in inch/min or mm/min depending on unit sys), syntax: G1 X1.5 Y0.5 Z0.0 F10.0
-G4 - dwell, input P(dwell time in ms), syntax: G4 P115.0
-G20 - inch unit system
-G21 - millimeter unit system
-G30 - set reference point 1
-G31 - return to reference point 1
-G32 - set reference point 2
-G33 - return to reference point 2
-G90 - absolute coordinate system
-G91 - incremental coordinate system
-G92 - set current position, input X Y Z, syntax: G92 X0 Y1 (set current position as X=0.0, Y=1.0, and Z remains unchanged)
-
-Mcode Reference
-M2 - stop program
-M3 - spindle on, CW
-M4 - spindle on, CCW
-M5 - spindle off
-M44 - enable min software endstops
-M45 - disable min software endstops
-M46 - enable max software endstops
-M47 - disable max software endstops
-M48 - max speed override, input F(new max feedrate), syntax: M48 F100.0
-M49 - disable speed override
-M50 - change step mode, input X Y Z, syntax: M50 X1 Y1 Z4 (set x and y axes to full torque and use 4x microstepping on z)
-M60 - turn acceleration on
-M61 - turn acceleration off
-M70 - debugging mode on
-M71 - debugging mode off
-M101 - extruder on, forward
-M102 - extruder on, backward
-M103 - extruder off
-M104 - set extruder temperature, input S, syntax: M104 S200 (set target temp to 200 deg C)
-M106 - turn fan on
-M107 - turn fan off
-M201 - turn light on
-M202 - turn light off
-
-Tcode Reference
-T0 - switch to tool 0, default tool by which all other tool offsets are measured from
-T1 - switch to tool 1
-T2 - switch to tool 2
-T3 - switch to tool 3
-T10 - home all z axes, lower each z axis until it hits its software/hardware min endstops
-T11 - level all z axes, this will move all z axes so the toolhead tips are all at the same height assuming the toolchanger array values are set correctly
-T14 - set desired active toolhead clearance, input P, syntax: T14 P0.5 (set clearance to 0.5 inches), required for milling or any other operation where the toolhead tip drops below workpiece height
-T15 - move all non-active toolheads to achieve desired active toolhead clearance
-T20 - complete toolhead startup routine
-
-
-Please note that parameters defined below should be reviewed and changed to match your application.  Variables in all capital leters are those which are constant
-and will not change without redefining them below and then recompiling the firmware.  Some variables which are not constants can be changed in real-time via
-the G, M, and T codes listed above.
-
-*/
-
-
+#include "configuration.h"
+#include "pins.h"
+#include "ThermistorTable.h"
 //#include <cpwStepper.h> // custom library for stepper motor driving, comment this out if it is not required to reduce program size
-
-// drive types, #define values were creatively chosen for steps per inch compensation
-#define TORQUE 1
-#define HALF 2
-#define MICRO4 4
-#define MICRO8 8
-#define MICRO16 16
-#define MICRO32 32
-#define MICRO64 64
 
 // unit systems
 #define INCHES 20
@@ -87,92 +15,37 @@ the G, M, and T codes listed above.
 #define BACKWARD 24
 
 // temperature control
-#define PID_CONTROL 0 // 1 for on, 0 for off
+#define PID_CONTROL 1 // 1 for on, 0 for off
 #if PID_CONTROL
   #include <PID_Beta6.h> // library for PID temperature control
 #endif
 
-
-// x motor declarations
 const boolean INVERT_X_DIR = false;
-#define X_USE_DIRSTEP 1 // change this to 1 if you already have a motor driver and only want the Arduino sending dir and step commands
-#if X_USE_DIRSTEP
-  const int X_DIR_PIN = 23;
-  const int X_STEP_PIN = 22;
-  const int X_ENABLE_PIN = 24;
-#else
-  const int X_COIL1A = 2;
-  const int X_COIL1B = 3;
-  const int X_COIL2A = 4;
-  const int X_COIL2B = 5;
-#endif
-const int X_MIN_ENDSTOP = 48;
-const int X_MAX_ENDSTOP = 49;
-const boolean INVERT_X_MIN_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const int X_MIN_ENDSTOP = X_MIN_PIN;
+const int X_MAX_ENDSTOP = X_MAX_PIN; 
+const boolean INVERT_X_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 const boolean INVERT_X_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
 
-// y motor declarations
 const boolean INVERT_Y_DIR = false;
-#define Y_USE_DIRSTEP 1 // change this to 1 if you already have a motor driver and only want the Arduino sending dir and step commands
-#if Y_USE_DIRSTEP
-  const int Y_DIR_PIN = 25;
-  const int Y_STEP_PIN = 26; 
-  const int Y_ENABLE_PIN = 27;
-#else
-  const int Y_COIL1A = 6;
-  const int Y_COIL1B = 7;
-  const int Y_COIL2A = 8;
-  const int Y_COIL2B = 9;
-#endif
-const int Y_MIN_ENDSTOP = 46;
-const int Y_MAX_ENDSTOP = 47;
-const boolean INVERT_Y_MIN_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const int Y_MIN_ENDSTOP = Y_MIN_PIN;
+const int Y_MAX_ENDSTOP = Y_MAX_PIN;
+const boolean INVERT_Y_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 const boolean INVERT_Y_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
 
-// z motor declarations
 const boolean INVERT_Z_DIR = false;
-
-#define Z_USE_DIRSTEP 1 // change this to 1 if you already have a motor driver and only want the Arduino sending dir and step commands
-#if Z_USE_DIRSTEP
-  const int Z_DIR_PIN[4] = {28, 28, 28, 28};
-  const int Z_STEP_PIN[4] = {29, 29, 29, 29};
-  const int Z_ENABLE_PIN[4] = {30, 30, 30, 30};
-#else
-  const int Z_COIL1A = 38;
-  const int Z_COIL1B = 40;
-  const int Z_COIL2A = 42;
-  const int Z_COIL2B = 44;
-#endif
-const int Z_MIN_ENDSTOP = 44; // note that all the Z min endstops can be wired together to reduce pin usage
-const int Z_MAX_ENDSTOP = 45; // note that all the Z min endstops can be wired together to reduce pin usage
-const boolean INVERT_Z_MIN_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const int Z_DIR_PIN[4] = {Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN};
+const int Z_STEP_PIN[4] = {Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN};
+const int Z_MIN_ENDSTOP = Z_MIN_PIN; // note that all the Z min endstops can be wired together to reduce pin usage
+const int Z_MAX_ENDSTOP = Z_MAX_PIN; // note that all the Z min endstops can be wired together to reduce pin usage
+const boolean INVERT_Z_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 const boolean INVERT_Z_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
 
-// extruder motor declarations
 const boolean INVERT_E_DIR = false;
-#define E_USE_DIRSTEP 1 // change this to 1 if you already have a motor driver and only want the Arduino sending dir and step commands
-#if E_USE_DIRSTEP
-  const int E_DIR_PIN = 31;
-  const int E_STEP_PIN = 4;
-  const int E_ENABLE_PIN = -1;
-#else
-  const int E_COIL1A = 22;
-  const int E_COIL1B = 23;
-  const int E_COIL2A = 24;
-  const int E_COIL2B = 25;
-#endif
-
-// determins which signal to send to the enable pin. Default = HIGH
-#define ENABLE_ON HIGH
 
 
 // accessory declarations
-const int LEDPIN = 13;
-const int FANPIN = 51;
-const int SPINDLEPIN = 52;
-const int LIGHTPIN = 50;
-const int KILLPIN_DIGITAL = 21;
-const int KILLPIN_INTERRUPT = 2;
+const int KILLPIN_DIGITAL = 9;
+const int KILLPIN_INTERRUPT = 8;
 
 // toolhead specifications
 const int NUMBER_OF_TOOLS = 1; // change this to the number of tools the machine has hooked up
@@ -186,33 +59,29 @@ int current_tool = 0; // default is tool 0
 int current_tool_previous;
 float toolhead_clearance = 0.5; // distance to move other tools away from active tool (for milling deep into parts, make this larger)
 
-// machine specifications
-const float X_STROKE = 18.0; // inches of x axis travel
-const float Y_STROKE = 18.0; // inches of y axis travel
-const float Z_STROKE = 8.0; // inches of z axis travel, should be the same for all
 
 // logic and option variables
 boolean min_software_endstops = false; // using hardware endstops would be better in case you miss steps somewhere
 boolean max_software_endstops = true;
 boolean comment_mode = false;
 boolean absolute_positioning = true; // absolute coordinate system is used by default to get rid of round-off error
-boolean extruding = false; // variable to know when we are supposed to be extruding or not (leave on false here!)
+boolean extruding = false; // variable to know when we are supposed to be extruding or not
 int extruder_dir = FORWARD; // variable to know when we are supposed to be extruding or not
 boolean spindle_on = false;
-int unit_system = MILLIMETERS; // inches by default
+int unit_system = MILLIMETERS; //INCHES; // Re-defined to MM by default
 boolean acceleration = true;
 boolean debugging = false; // use this to control using serial.print statements so they don't interfere with GUI auth
 
 // speed, timing, and position variables
-float absolute_x = 0.0, absolute_y = 0.0, absolute_z[4] = {0.0, 0.0, 0.0, 0.0}; // need to add absolute tracking (so G92 doesn't screw up endstops)
-float current_x = 0.0, current_y = 0.0, current_z = 0.0;
-float destination_x, destination_y, destination_z = 0.0;
+float absolute_x = 0.0, absolute_y = 0.0, absolute_z[4] = {0.0, 0.0, 0.0, 0.0}, absolute_e; // need to add absolute tracking (so G92 doesn't screw up endstops)
+float current_x = 0.0, current_y = 0.0, current_z = 0.0, current_e = 0.0;
+float destination_x, destination_y, destination_z = 0.0, destination_e = 0.0;
 float x1, y1, z1, x2, y2, z2;
 int x_steps_to_take, y_steps_to_take, z_steps_to_take, e_steps_to_take;
 
-const float DEFAULT_FEEDRATE_IPM = 60.0;
-const float MAXIMUM_FEEDRATE_IPM = 80.0;
-const float ZEROING_IPM = 30.0;
+
+const float ZEROING_IPM = 30.0;  //Feedrate
+
 float maximum_user_feedrate_IPM = MAXIMUM_FEEDRATE_IPM;
 float feedrate_IPM;
 
@@ -249,10 +118,11 @@ int codenum;
 
 // motor drive types, see #defines above for options
 // if you are using external motor drivers (ie use_dirstep == true) then make sure the modes below match what your external driver is set to
-int x_drive_type = HALF;
-int y_drive_type = HALF;
-int z_drive_type = HALF;
-int e_drive_type = HALF;
+// drive_types: FULL 1, HALF 2, MICRO4 4, MICRO8 8, MICRO16 16, MICRO64 64
+int x_drive_type = 2;
+int y_drive_type = 2;
+int z_drive_type = 2;
+int e_drive_type = 2;
 
 // setup all motors through library class if we need them
 #if !X_USE_DIRSTEP
@@ -268,22 +138,16 @@ int e_drive_type = HALF;
   cpwStepper cpwStepper_e(E_COIL1A, E_COIL1B, E_COIL2A, E_COIL2B, e_drive_type);
 #endif
 
-// conpensate steps_per_inch for varying drive type
-float x_steps_per_inch = (int)1/0.5*200*x_drive_type; // formula: (1 in)/(lead per rev)*(steps per rev)*compensation
-float y_steps_per_inch = (int)1/0.5*200*y_drive_type; // formula: (1 in)/(lead per rev)*(steps per rev)*compensation
-float z_steps_per_inch = (int)1/0.5*200*z_drive_type; // formula: (1 in)/(lead per rev)*(steps per rev)*compensation
-float e_steps_per_inch = (int)1/(3.14159*0.5)*200*e_drive_type; // formula: (1 in)/(pinch wheel diameter)*(steps per rev)*compensation
-
 // temperature control variables
 #if PID_CONTROL
   double Setpoint, Input, Output;
-  int thermocouplePin = 2;
-  int heaterPin = 12;
+  int thermocouplePin = TEMP_0_PIN;
+  int heaterPin = HEATER_0_PIN;
   PID myPID(&Input, &Output, &Setpoint,2,5,1);
   float Setpoint_max = 550.0;
   float Setpoint_min = 30.0;
-  float current_temp;
-  int current_temp_int;
+  //float current_temp;
+  //int current_temp_int;
 #endif
 
 
@@ -311,10 +175,6 @@ void setup() // initialization loop for pin types and initial values
   #if X_USE_DIRSTEP
     pinMode(X_DIR_PIN, OUTPUT);
     pinMode(X_STEP_PIN, OUTPUT);
-    if(X_ENABLE_PIN > 0){
-      pinMode(X_ENABLE_PIN, OUTPUT);
-      digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
-    }
   #else // we are using internal stepping
     cpwStepper_x.takestep(INVERT_X_DIR); // startup x motor
     cpwStepper_x.disable(); // used while debuggingg to save power, can delete later
@@ -323,11 +183,7 @@ void setup() // initialization loop for pin types and initial values
   #if Y_USE_DIRSTEP
     pinMode(Y_DIR_PIN, OUTPUT);
     pinMode(Y_STEP_PIN, OUTPUT);
-    if(Y_ENABLE_PIN > 0){
-      pinMode(Y_ENABLE_PIN, OUTPUT);
-      digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
-    }  
-    #else // we are using internal stepping
+  #else // we are using internal stepping
     cpwStepper_y.takestep(INVERT_Y_DIR); // startup y motor
     cpwStepper_y.disable(); // used while debuggingg to save power, can delete later
   #endif
@@ -336,10 +192,6 @@ void setup() // initialization loop for pin types and initial values
     for (int n = 0; n < NUMBER_OF_TOOLS; n++) {
       pinMode(Z_DIR_PIN[n], OUTPUT);
       pinMode(Z_STEP_PIN[n], OUTPUT);
-      if(Z_ENABLE_PIN[n] > 0){
-        pinMode(Z_ENABLE_PIN[n], OUTPUT);
-        digitalWrite(Z_ENABLE_PIN[n], !ENABLE_ON);
-      }
     }
   #else // we are using internal stepping
     cpwStepper_z.takestep(INVERT_Z_DIR); // startup z motor
@@ -349,25 +201,44 @@ void setup() // initialization loop for pin types and initial values
   #if E_USE_DIRSTEP
     pinMode(E_DIR_PIN, OUTPUT);
     pinMode(E_STEP_PIN, OUTPUT);
-    if(E_ENABLE_PIN > 0){
-      pinMode(E_ENABLE_PIN, OUTPUT);
-      digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
-    }  
   #else // we are using internal stepping
     cpwStepper_e.takestep(INVERT_E_DIR); // startup extruder motor
     cpwStepper_e.disable(); // used while debuggingg to save power, can delete later
   #endif
   
-  
+#ifdef SPINDLEPIN
   pinMode(SPINDLEPIN, OUTPUT);
   digitalWrite(SPINDLEPIN, LOW);
+#endif
+#ifdef FANPIN
   pinMode(FANPIN, OUTPUT);
   digitalWrite(FANPIN, LOW);
+#endif
+#ifdef LEDPIN
   pinMode(LEDPIN, OUTPUT); // debuggingg, delete later
   digitalWrite(LEDPIN, LOW);
+#endif
+#ifdef LIGHTPIN
   pinMode(LIGHTPIN, OUTPUT);
   digitalWrite(LIGHTPIN, LOW);
-  
+#endif
+#ifdef PS_ON_PIN
+  pinMode(PS_ON_PIN, OUTPUT);
+  digitalWrite(PS_ON_PIN, HIGH);
+#endif
+
+pinMode(X_ENABLE_PIN, OUTPUT);
+digitalWrite(X_ENABLE_PIN, LOW);
+
+pinMode(Y_ENABLE_PIN, OUTPUT);
+digitalWrite(Y_ENABLE_PIN, LOW);
+
+pinMode(Z_ENABLE_PIN, OUTPUT);
+digitalWrite(Z_ENABLE_PIN, LOW);
+
+pinMode(E_ENABLE_PIN, OUTPUT);
+digitalWrite(E_ENABLE_PIN, LOW);
+
   Serial.begin(19200); // initialize serial interface for debugging
   
   clear_buffer();
@@ -640,7 +511,8 @@ void process_commands(char command[], int command_length) // deals with standard
           e_steps_to_take = sqrt((destination_x - current_x)*(destination_x - current_x) + (destination_y - current_y)*(destination_y - current_y) + (destination_z - current_z)*(destination_z - current_z))*e_steps_per_inch;;
         }
         else {
-          e_steps_to_take = 0;
+          //e_steps_to_take = 0;
+          e_steps_to_take = abs(destination_e - current_e)*e_steps_per_inch;
         }
         
         // find time for move by moving largest distance at defined feedrate
@@ -861,18 +733,24 @@ void process_commands(char command[], int command_length) // deals with standard
         break;
       case 3: // M3, turn spindle on, CW
         if (debugging == true) Serial.println("M3: turn spindle on, CW");
-        digitalWrite(SPINDLEPIN, HIGH);
-        spindle_on = true;
+	  #ifdef SPINDLEPIN
+          digitalWrite(SPINDLEPIN, HIGH);
+          spindle_on = true;
+        #endif
         break;
       case 4: // M4, turn spindle on, CCW
         if (debugging == true) Serial.println("M4: turn spindle on, CCW");
-        digitalWrite(SPINDLEPIN, HIGH);
-        spindle_on = true;
+	  #ifdef SPINDLEPIN
+          digitalWrite(SPINDLEPIN, HIGH);
+          spindle_on = true;
+        #endif
         break;
       case 5: // M5, turn spindle off
         if (debugging == true) Serial.println("M5: turn spindle off");
-        digitalWrite(SPINDLEPIN, LOW);
-        spindle_on = false;
+        #ifdef SPINDLEPIN
+          digitalWrite(SPINDLEPIN, LOW);
+          spindle_on = false;
+        #endif
         break;
       case 6: // M6, tool change
         
@@ -1006,6 +884,18 @@ void process_commands(char command[], int command_length) // deals with standard
       case 71: // M71, debugging mode turned off
         debugging = false;
         break;
+      case 80: // M80, Custom code to turn on ATX PSU
+        if (debugging == true) Serial.println("M80: turn on ATX PSU");
+        #ifdef PS_ON_PIN
+          digitalWrite(PS_ON_PIN, LOW);
+        #endif
+        break;
+      case 81: // M80, Custom code to turn off ATX PSU
+        if (debugging == true) Serial.println("M81: turn off ATX PSU");
+        #ifdef PS_ON_PIN
+          digitalWrite(PS_ON_PIN, HIGH);
+        #endif
+        break;
       case 101: // M101, reprap specific, extruder on, forward
         extruding = true;
         extruder_dir = FORWARD;
@@ -1027,7 +917,9 @@ void process_commands(char command[], int command_length) // deals with standard
           strchr_pointer = strchr(buffer, 'S');
           if (strchr_pointer != NULL) // We found a S value
           {
-            Setpoint = ((float)strtod(&command[strchr_pointer - command + 1], NULL))*0.01/5.0*1023.0; // convert from deg C to setpoint (0-1023)
+            Setpoint = temp2analog( ((float)strtod(&command[strchr_pointer - command + 1], NULL)) ); // convert from deg C to setpoint (0-1023)
+            Serial.print("temp2analog: ");
+            Serial.println(Setpoint);
             if (Setpoint > Setpoint_max) { // it is a valid type
               Setpoint = Setpoint_max;
             }
@@ -1039,31 +931,35 @@ void process_commands(char command[], int command_length) // deals with standard
         
         break;
       case 105: // M105, reprap specific, get extruder temperature
-        if (debugging == true) Serial.println("M105: get extruder temp");
-        
-        #if PID_CONTROL
-          //current_temp = Input/1023.0*5.0/0.01; // temperature in degrees C
-          current_temp_int = analogRead(thermocouplePin);
-          Serial.print(current_temp_int, DEC);
-          Serial.print(":");
-        #endif
-        
+          if (debugging == true) Serial.println("M105: get extruder temp");
+          Serial.print("T:");
+          Serial.println(  analog2temp( analogRead(thermocouplePin) )  );
+          Serial.print("analogRead: ");
+          Serial.println( analogRead(thermocouplePin) );
         break;
       case 106: // M106, reprap specific, turn fan on
         if (debugging == true) Serial.println("M106: turn fan on");
-        digitalWrite(FANPIN, HIGH);
+        #ifdef FANPIN
+          digitalWrite(FANPIN, HIGH);
+        #endif
         break;
       case 107: // M107, reprap specific, turn fan off
-        //Serial.println("M107: turn fan off");
-        digitalWrite(FANPIN, LOW);
+        if (debugging == true) Serial.println("M107: turn fan off");
+        #ifdef FANPIN
+          digitalWrite(FANPIN, LOW);
+        #endif
         break;
       case 201: // M201, turn light on
-        if (debugging == true) Serial.println("M201: turn light on");
-        digitalWrite(LIGHTPIN, HIGH);
+        #ifdef LIGHTPIN
+          if (debugging == true) Serial.println("M201: turn light on");
+          digitalWrite(LIGHTPIN, HIGH);
+        #endif
         break;
       case 202: // M202, turn light off
-        if (debugging == true) Serial.println("M202: turn light off");
-        digitalWrite(LIGHTPIN, LOW);
+        #ifdef LIGHTPIN
+          if (debugging == true) Serial.println("M202: turn light off");
+          digitalWrite(LIGHTPIN, LOW);
+        #endif
         break;
         
     }
@@ -1177,6 +1073,7 @@ void get_coordinates(char command[])
   destination_x = current_x;
   destination_y = current_y;
   destination_z = current_z;
+  destination_e = current_e;
   
   // find X coordinate
   strchr_pointer = strchr(buffer, 'X');
@@ -1195,6 +1092,16 @@ void get_coordinates(char command[])
     destination_y = (float)strtod(&command[strchr_pointer - command + 1], NULL);
     if (unit_system == MILLIMETERS) {
       destination_y = destination_y / 25.4;
+    }
+  }
+  
+  // find E coordinate
+  strchr_pointer = strchr(buffer, 'E');
+  if (strchr_pointer != NULL) // We found an X value
+  {
+    destination_e = (float)strtod(&command[strchr_pointer - command + 1], NULL);
+    if (unit_system == MILLIMETERS) {
+      destination_e = destination_e / 25.4;
     }
   }
   
@@ -1521,23 +1428,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
     get_acceleration_interval(x_steps_remaining, y_steps_remaining, z_steps_remaining, e_steps_remaining); // make array of stepping intervals for smooth acceleration
   }
   
-  // Adding enable support for the steppers
-  if (x_steps_remaining > 0 && X_ENABLE_PIN > 0){
-    digitalWrite(X_ENABLE_PIN, ENABLE_ON);
-  }
-
-  if (y_steps_remaining > 0 && Y_ENABLE_PIN > 0){
-    digitalWrite(Y_ENABLE_PIN, ENABLE_ON);
-  }
-
-  if (z_steps_remaining > 0 && Z_ENABLE_PIN[current_tool] > 0){
-    digitalWrite(Z_ENABLE_PIN[current_tool], ENABLE_ON);
-  }
-  
-  if (e_steps_remaining > 0 && E_ENABLE_PIN > 0){
-    digitalWrite(E_ENABLE_PIN, ENABLE_ON);
-  }
-  
   while(x_steps_remaining > 0 || y_steps_remaining > 0 || z_steps_remaining > 0 || e_steps_remaining > 0) // move until no more steps remain
   {
     if (x_steps_remaining > 0)
@@ -1583,9 +1473,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
-          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
-              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
       else // X CCW
@@ -1608,9 +1495,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
-          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
-              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
     }
@@ -1657,9 +1541,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
-          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
-              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
       else // Y CCW
@@ -1682,9 +1563,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
-          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
-              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
     }
@@ -1720,7 +1598,7 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
         }
         else if ((micros()-previous_micros_z) >= z_interval) // if we have waited long enough
         {
-          #if Z_USE_DIRSTEP            
+          #if Z_USE_DIRSTEP
             digitalWrite(Z_DIR_PIN[current_tool], INVERT_Z_DIR);
             digitalWrite(Z_STEP_PIN[current_tool], HIGH);
             previous_micros_z = micros();
@@ -1731,9 +1609,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
-          if (z_steps_remaining == 0 && Z_ENABLE_PIN[current_tool] > 0){
-              digitalWrite(Z_ENABLE_PIN[current_tool], !ENABLE_ON);
-          }
         }
       }
       else // Z CCW
@@ -1746,7 +1621,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
         else if ((micros()-previous_micros_z) >= z_interval) // if we have waited long enough
         {
           #if Z_USE_DIRSTEP
-
             digitalWrite(Z_DIR_PIN[current_tool], !INVERT_Z_DIR);
             digitalWrite(Z_STEP_PIN[current_tool], HIGH);
             previous_micros_z = micros();
@@ -1757,11 +1631,8 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
-          if (z_steps_remaining == 0 && Z_ENABLE_PIN[current_tool] > 0){
-              digitalWrite(Z_ENABLE_PIN[current_tool], !ENABLE_ON);
-          }          
         }
-      }  
+      }
     }
     
     if (e_steps_remaining > 0)
@@ -1781,9 +1652,6 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
-          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
-              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
       else if (extruder_dir == BACKWARD) // extruder forward, this is where motor direction is handled
@@ -1801,14 +1669,10 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
-          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
-              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
-          }
         }
       }
     }
-  
- }
+  }
   
   // update positioning
   if (absolute_positioning == true) { // use absolute programming
@@ -1891,8 +1755,13 @@ void kill_all() // activated through estop
     cpwStepper_e.disable();
   #endif
   
+  #ifdef SPINDLEPIN
   digitalWrite(SPINDLEPIN, LOW); // turn off spindle
+  #endif
+  
+  #ifdef LEDPIN
   digitalWrite(LEDPIN, LOW); // turn off LED, debuggingg, delete later
+  #endif
   
   #if PID_CONTROL
     analogWrite(heaterPin, 0); // turn off heater
@@ -1906,5 +1775,66 @@ void kill_all() // activated through estop
     delay(1);
   }
   if (debugging == true) Serial.println("resuming operation...");
+}
+
+// Takes temperature value as input and returns corresponding analog value from RepRap thermistor temp table.
+// This is needed because PID in hydra firmware hovers around a given analog value, not a temp value.
+// This function is derived from inversing the logic from a portion of getTemperature() in FiveD RepRap firmware.
+int temp2analog(int celsius)
+{
+#ifdef USE_THERMISTOR
+  int raw = 0;
+  byte i;
+
+  for (i=1; i<NUMTEMPS; i++)
+  {
+    if (temptable[i][1] < celsius)
+    {
+      raw = temptable[i-1][0] + 
+        (celsius - temptable[i-1][1]) * 
+        (temptable[i][0] - temptable[i-1][0]) /
+        (temptable[i][1] - temptable[i-1][1]);
+
+      break;
+    }
+  }
+
+  // Overflow: Set to last value in the table
+  if (i == NUMTEMPS) raw = temptable[i-1][0];
+
+  return raw;
+#else
+  return celsius * ((1024.0/(5.0*100.0));
+#endif
+}
+
+// Derived from RepRap FiveD extruder::getTemperature()
+int analog2temp(int raw)
+{
+#ifdef USE_THERMISTOR
+
+  int celsius = 0;
+  byte i;
+
+  for (i=1; i<NUMTEMPS; i++)
+  {
+    if (temptable[i][0] > raw)
+    {
+      celsius  = temptable[i-1][1] + 
+        (raw - temptable[i-1][0]) * 
+        (temptable[i][1] - temptable[i-1][1]) /
+        (temptable[i][0] - temptable[i-1][0]);
+
+      break;
+    }
+  }
+
+  // Overflow: Set to last value in the table
+  if (i == NUMTEMPS) celsius = temptable[i-1][1];
+
+  return celsius;
+#else
+  return analogRead(thermocouplePin) * ((5.0*100.0)/1024.0);
+#endif
 }
 
