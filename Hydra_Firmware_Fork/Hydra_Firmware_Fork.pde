@@ -196,10 +196,10 @@ boolean min_software_endstops = false; // using hardware endstops would be bette
 boolean max_software_endstops = true;
 boolean comment_mode = false;
 boolean absolute_positioning = true; // absolute coordinate system is used by default to get rid of round-off error
-boolean extruding = false; // variable to know when we are supposed to be extruding or not
+boolean extruding = false; // variable to know when we are supposed to be extruding or not (leave on false here!)
 int extruder_dir = FORWARD; // variable to know when we are supposed to be extruding or not
 boolean spindle_on = false;
-int unit_system = INCHES; // inches by default
+int unit_system = MILLIMETERS; // inches by default
 boolean acceleration = true;
 boolean debugging = false; // use this to control using serial.print statements so they don't interfere with GUI auth
 
