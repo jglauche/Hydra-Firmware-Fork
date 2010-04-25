@@ -176,6 +176,10 @@ void setup() // initialization loop for pin types and initial values
   #if X_USE_DIRSTEP
     pinMode(X_DIR_PIN, OUTPUT);
     pinMode(X_STEP_PIN, OUTPUT);
+    if(X_ENABLE_PIN > 0){
+      pinMode(X_ENABLE_PIN, OUTPUT);
+      digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+    }
   #else // we are using internal stepping
     cpwStepper_x.takestep(INVERT_X_DIR); // startup x motor
     cpwStepper_x.disable(); // used while debuggingg to save power, can delete later
@@ -184,16 +188,23 @@ void setup() // initialization loop for pin types and initial values
   #if Y_USE_DIRSTEP
     pinMode(Y_DIR_PIN, OUTPUT);
     pinMode(Y_STEP_PIN, OUTPUT);
+    if(Y_ENABLE_PIN > 0){
+      pinMode(Y_ENABLE_PIN, OUTPUT);
+      digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+    } 
   #else // we are using internal stepping
     cpwStepper_y.takestep(INVERT_Y_DIR); // startup y motor
     cpwStepper_y.disable(); // used while debuggingg to save power, can delete later
   #endif
   
   #if Z_USE_DIRSTEP
-    for (int n = 0; n < NUMBER_OF_TOOLS; n++) {
-      pinMode(Z_DIR_PIN[n], OUTPUT);
-      pinMode(Z_STEP_PIN[n], OUTPUT);
+    pinMode(Z_DIR_PINN, OUTPUT);
+    pinMode(Z_STEP_PINN, OUTPUT);
+    if(Z_ENABLE_PIN > 0){
+      pinMode(Z_ENABLE_PIN, OUTPUT);
+      digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
     }
+
   #else // we are using internal stepping
     cpwStepper_z.takestep(INVERT_Z_DIR); // startup z motor
     cpwStepper_z.disable(); // used while debuggingg to save power, can delete later
@@ -202,11 +213,11 @@ void setup() // initialization loop for pin types and initial values
   #if E_USE_DIRSTEP
     pinMode(E_DIR_PIN, OUTPUT);
     pinMode(E_STEP_PIN, OUTPUT);
-  #elif E_USE_DC == 1
-    // FIXME
-  
-  
-  #else // we are using internal stepping
+    if(E_ENABLE_PIN > 0){
+      pinMode(E_ENABLE_PIN, OUTPUT);
+      digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+    } 
+  #elif !E_USE_DC // we are using internal stepping
     cpwStepper_e.takestep(INVERT_E_DIR); // startup extruder motor
     cpwStepper_e.disable(); // used while debuggingg to save power, can delete later
   #endif
@@ -1433,6 +1444,23 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
     get_acceleration_interval(x_steps_remaining, y_steps_remaining, z_steps_remaining, e_steps_remaining); // make array of stepping intervals for smooth acceleration
   }
   
+    // Adding enable support for the steppers
+  if (x_steps_remaining > 0 && X_ENABLE_PIN > 0){
+    digitalWrite(X_ENABLE_PIN, ENABLE_ON);
+  }
+
+  if (y_steps_remaining > 0 && Y_ENABLE_PIN > 0){
+    digitalWrite(Y_ENABLE_PIN, ENABLE_ON);
+  }
+
+  if (z_steps_remaining > 0 && Z_ENABLE_PIN > 0){
+    digitalWrite(Z_ENABLE_PIN, ENABLE_ON);
+  }
+  
+  if (e_steps_remaining > 0 && E_ENABLE_PIN > 0){
+    digitalWrite(E_ENABLE_PIN, ENABLE_ON);
+  }
+  
   while(x_steps_remaining > 0 || y_steps_remaining > 0 || z_steps_remaining > 0 || e_steps_remaining > 0) // move until no more steps remain
   {
     if (x_steps_remaining > 0)
@@ -1478,6 +1506,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
+          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
+              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // X CCW
@@ -1500,6 +1531,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
+          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
+              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1546,6 +1580,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
+          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
+              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // Y CCW
@@ -1568,6 +1605,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
+          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
+              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1614,6 +1654,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
+          if (z_steps_remaining == 0 && Z_ENABLE_PIN > 0){
+              digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // Z CCW
@@ -1636,6 +1679,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
+          if (z_steps_remaining == 0 && Z_ENABLE_PIN > 0){
+              digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1657,6 +1703,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
+          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
+              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else if (extruder_dir == BACKWARD) // extruder forward, this is where motor direction is handled
@@ -1674,6 +1723,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
+          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
+              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
