@@ -138,6 +138,10 @@ int e_drive_type = 2;
   cpwStepper cpwStepper_e(E_COIL1A, E_COIL1B, E_COIL2A, E_COIL2B, e_drive_type);
 #endif
 
+#if E_USE_DC
+  byte dc_extrusion_speed = 0;
+#endif
+
 // temperature control variables
 
 int thermocouplePin = TEMP_0_PIN;
@@ -244,16 +248,19 @@ void setup() // initialization loop for pin types and initial values
 #endif
 
 pinMode(X_ENABLE_PIN, OUTPUT);
-digitalWrite(X_ENABLE_PIN, LOW);
+digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(Y_ENABLE_PIN, OUTPUT);
-digitalWrite(Y_ENABLE_PIN, LOW);
+digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(Z_ENABLE_PIN, OUTPUT);
-digitalWrite(Z_ENABLE_PIN, LOW);
+digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(E_ENABLE_PIN, OUTPUT);
-digitalWrite(E_ENABLE_PIN, LOW);
+digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+
+
+
 
   Serial.begin(19200); // initialize serial interface for debugging
   
@@ -915,13 +922,25 @@ void process_commands(char command[], int command_length) // deals with standard
       case 101: // M101, reprap specific, extruder on, forward
         extruding = true;
         extruder_dir = FORWARD;
+#if E_USE_DC
+        digitalWrite(E_DIR_PIN, extruder_dir);
+        analogWrite(E_STEP_PIN, dc_extrusion_speed);
+#endif
         break;
       case 102: // M102, reprap specific, extruder on, reverse
         extruding = true; // need to look at how reprap and skeinforge handle reverse extrusion, command turns it on, but then is a dwell command given to actually pull filament back up??
         extruder_dir = BACKWARD;
+#if E_USE_DC
+        digitalWrite(E_DIR_PIN, extruder_dir);
+        analogWrite(E_STEP_PIN, dc_extrusion_speed);
+#endif
         break;
       case 103: // M103, reprap specific, extruder off
         extruding = false;
+#if E_USE_DC
+        analogWrite(E_STEP_PIN, 0);
+#endif
+
         break;
       case 104: // M104, reprap specific, set extruder temperature
         
@@ -964,6 +983,15 @@ void process_commands(char command[], int command_length) // deals with standard
         #ifdef FANPIN
           digitalWrite(FANPIN, LOW);
         #endif
+        break;
+      case 108: // extruder speed for DC motor
+#if E_USE_DC
+          strchr_pointer = strchr(buffer, 'S');
+          if (strchr_pointer != NULL) // We found a S value
+          {
+            dc_extrusion_speed = (byte)strtod(&command[strchr_pointer - command + 1], NULL);  
+          }
+#endif
         break;
       case 201: // M201, turn light on
         #ifdef LIGHTPIN
@@ -1184,6 +1212,8 @@ void get_feedrate(char command[])
   }
   
 }
+
+
 
 
 void get_acceleration_parameters(int x_steps_remaining, int y_steps_remaining, int z_steps_remaining, int e_steps_remaining)

@@ -9,13 +9,12 @@ movements.
 
 Goals implemented:
 - Stepper enable pins
-- Support for DC motor extruder
-- Add tonokip's thermistor table implementation
-
 
 Current goals to do:
+- Support for DC motor extruder
 - Convert machine definitions to SI units
-- Make this firmware multi-extruder ready
+- Add tonokip's thermistor table implementation
+
 
 
 

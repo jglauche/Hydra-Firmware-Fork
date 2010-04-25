@@ -159,11 +159,16 @@ int e_drive_type = 2;
   cpwStepper cpwStepper_e(E_COIL1A, E_COIL1B, E_COIL2A, E_COIL2B, e_drive_type);
 #endif
 
+#if E_USE_DC
+  byte dc_extrusion_speed = 0;
+#endif
+
 // temperature control variables
+
+int thermocouplePin = TEMP_0_PIN;
+int heaterPin = HEATER_0_PIN;
 #if PID_CONTROL
   double Setpoint, Input, Output;
-  int thermocouplePin = TEMP_0_PIN;
-  int heaterPin = HEATER_0_PIN;
   PID myPID(&Input, &Output, &Setpoint,2,5,1);
   float Setpoint_max = 550.0;
   float Setpoint_min = 30.0;
@@ -196,6 +201,10 @@ void setup() // initialization loop for pin types and initial values
   #if X_USE_DIRSTEP
     pinMode(X_DIR_PIN, OUTPUT);
     pinMode(X_STEP_PIN, OUTPUT);
+    if(X_ENABLE_PIN > 0){
+      pinMode(X_ENABLE_PIN, OUTPUT);
+      digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+    }
   #else // we are using internal stepping
     cpwStepper_x.takestep(INVERT_X_DIR); // startup x motor
     cpwStepper_x.disable(); // used while debuggingg to save power, can delete later
@@ -204,16 +213,23 @@ void setup() // initialization loop for pin types and initial values
   #if Y_USE_DIRSTEP
     pinMode(Y_DIR_PIN, OUTPUT);
     pinMode(Y_STEP_PIN, OUTPUT);
+    if(Y_ENABLE_PIN > 0){
+      pinMode(Y_ENABLE_PIN, OUTPUT);
+      digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+    } 
   #else // we are using internal stepping
     cpwStepper_y.takestep(INVERT_Y_DIR); // startup y motor
     cpwStepper_y.disable(); // used while debuggingg to save power, can delete later
   #endif
   
   #if Z_USE_DIRSTEP
-    for (int n = 0; n < NUMBER_OF_TOOLS; n++) {
-      pinMode(Z_DIR_PIN[n], OUTPUT);
-      pinMode(Z_STEP_PIN[n], OUTPUT);
+    pinMode(Z_DIR_PINN, OUTPUT);
+    pinMode(Z_STEP_PINN, OUTPUT);
+    if(Z_ENABLE_PIN > 0){
+      pinMode(Z_ENABLE_PIN, OUTPUT);
+      digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
     }
+
   #else // we are using internal stepping
     cpwStepper_z.takestep(INVERT_Z_DIR); // startup z motor
     cpwStepper_z.disable(); // used while debuggingg to save power, can delete later
@@ -222,11 +238,11 @@ void setup() // initialization loop for pin types and initial values
   #if E_USE_DIRSTEP
     pinMode(E_DIR_PIN, OUTPUT);
     pinMode(E_STEP_PIN, OUTPUT);
-  #elif E_USE_DC == 1
-    // FIXME
-  
-  
-  #else // we are using internal stepping
+    if(E_ENABLE_PIN > 0){
+      pinMode(E_ENABLE_PIN, OUTPUT);
+      digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+    } 
+  #elif !E_USE_DC // we are using internal stepping
     cpwStepper_e.takestep(INVERT_E_DIR); // startup extruder motor
     cpwStepper_e.disable(); // used while debuggingg to save power, can delete later
   #endif
@@ -253,16 +269,19 @@ void setup() // initialization loop for pin types and initial values
 #endif
 
 pinMode(X_ENABLE_PIN, OUTPUT);
-digitalWrite(X_ENABLE_PIN, LOW);
+digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(Y_ENABLE_PIN, OUTPUT);
-digitalWrite(Y_ENABLE_PIN, LOW);
+digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(Z_ENABLE_PIN, OUTPUT);
-digitalWrite(Z_ENABLE_PIN, LOW);
+digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(E_ENABLE_PIN, OUTPUT);
-digitalWrite(E_ENABLE_PIN, LOW);
+digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+
+
+
 
   Serial.begin(19200); // initialize serial interface for debugging
   
@@ -891,7 +910,7 @@ void process_commands(char command[], int command_length) // deals with standard
           e_drive_type = (int)strtod(&command[strchr_pointer - command + 1], NULL);
           if (e_drive_type == 1 || e_drive_type == 2 || e_drive_type == 4 || e_drive_type == 8 || e_drive_type == 16 || e_drive_type == 32 || e_drive_type == 64) { // it is a valid type
             e_steps_per_inch = e_steps_per_inch*e_drive_type/old_drive_type;
-            #if !E_USE_DIRSTEP
+            #if !E_USE_DIRSTEP and !E_USE_DC
               cpwStepper_x.steptype(x_drive_type);
             #endif
           }
@@ -924,13 +943,25 @@ void process_commands(char command[], int command_length) // deals with standard
       case 101: // M101, reprap specific, extruder on, forward
         extruding = true;
         extruder_dir = FORWARD;
+#if E_USE_DC
+        digitalWrite(E_DIR_PIN, extruder_dir);
+        analogWrite(E_STEP_PIN, dc_extrusion_speed);
+#endif
         break;
       case 102: // M102, reprap specific, extruder on, reverse
         extruding = true; // need to look at how reprap and skeinforge handle reverse extrusion, command turns it on, but then is a dwell command given to actually pull filament back up??
         extruder_dir = BACKWARD;
+#if E_USE_DC
+        digitalWrite(E_DIR_PIN, extruder_dir);
+        analogWrite(E_STEP_PIN, dc_extrusion_speed);
+#endif
         break;
       case 103: // M103, reprap specific, extruder off
         extruding = false;
+#if E_USE_DC
+        analogWrite(E_STEP_PIN, 0);
+#endif
+
         break;
       case 104: // M104, reprap specific, set extruder temperature
         
@@ -973,6 +1004,15 @@ void process_commands(char command[], int command_length) // deals with standard
         #ifdef FANPIN
           digitalWrite(FANPIN, LOW);
         #endif
+        break;
+      case 108: // extruder speed for DC motor
+#if E_USE_DC
+          strchr_pointer = strchr(buffer, 'S');
+          if (strchr_pointer != NULL) // We found a S value
+          {
+            dc_extrusion_speed = (byte)strtod(&command[strchr_pointer - command + 1], NULL);  
+          }
+#endif
         break;
       case 201: // M201, turn light on
         #ifdef LIGHTPIN
@@ -1193,6 +1233,8 @@ void get_feedrate(char command[])
   }
   
 }
+
+
 
 
 void get_acceleration_parameters(int x_steps_remaining, int y_steps_remaining, int z_steps_remaining, int e_steps_remaining)
@@ -1453,6 +1495,23 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
     get_acceleration_interval(x_steps_remaining, y_steps_remaining, z_steps_remaining, e_steps_remaining); // make array of stepping intervals for smooth acceleration
   }
   
+    // Adding enable support for the steppers
+  if (x_steps_remaining > 0 && X_ENABLE_PIN > 0){
+    digitalWrite(X_ENABLE_PIN, ENABLE_ON);
+  }
+
+  if (y_steps_remaining > 0 && Y_ENABLE_PIN > 0){
+    digitalWrite(Y_ENABLE_PIN, ENABLE_ON);
+  }
+
+  if (z_steps_remaining > 0 && Z_ENABLE_PIN > 0){
+    digitalWrite(Z_ENABLE_PIN, ENABLE_ON);
+  }
+  
+  if (e_steps_remaining > 0 && E_ENABLE_PIN > 0){
+    digitalWrite(E_ENABLE_PIN, ENABLE_ON);
+  }
+  
   while(x_steps_remaining > 0 || y_steps_remaining > 0 || z_steps_remaining > 0 || e_steps_remaining > 0) // move until no more steps remain
   {
     if (x_steps_remaining > 0)
@@ -1498,6 +1557,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
+          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
+              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // X CCW
@@ -1520,6 +1582,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_x = micros();
           #endif
           x_steps_remaining = x_steps_remaining - 1;
+          if (x_steps_remaining == 0 && X_ENABLE_PIN > 0){
+              digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1566,6 +1631,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
+          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
+              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // Y CCW
@@ -1588,6 +1656,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_y = micros();
           #endif
           y_steps_remaining = y_steps_remaining - 1;
+          if (y_steps_remaining == 0 && Y_ENABLE_PIN > 0){
+              digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1634,6 +1705,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
+          if (z_steps_remaining == 0 && Z_ENABLE_PIN > 0){
+              digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else // Z CCW
@@ -1656,6 +1730,9 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_z = micros();
           #endif
           z_steps_remaining = z_steps_remaining - 1;
+          if (z_steps_remaining == 0 && Z_ENABLE_PIN > 0){
+              digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1672,11 +1749,14 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
             delayMicroseconds(3);
             digitalWrite(E_STEP_PIN, LOW);
-          #else
+          #elif !E_USE_DC
             cpwStepper_e.takestep(INVERT_E_DIR);
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
+          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
+              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
       else if (extruder_dir == BACKWARD) // extruder forward, this is where motor direction is handled
@@ -1689,11 +1769,14 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
             delayMicroseconds(3);
             digitalWrite(E_STEP_PIN, LOW);
-          #else
+          #elif !E_USE_DC
             cpwStepper_e.takestep(!INVERT_E_DIR);
             previous_micros_e = micros();
           #endif
           e_steps_remaining = e_steps_remaining - 1;
+          if (e_steps_remaining == 0 && E_ENABLE_PIN > 0){
+              digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+          }
         }
       }
     }
@@ -1776,7 +1859,7 @@ void kill_all() // activated through estop
   #if !Z_USE_DIRSTEP
     cpwStepper_z.disable();
   #endif
-  #if !E_USE_DIRSTEP
+  #if !E_USE_DIRSTEP and !E_USE_DC
     cpwStepper_e.disable();
   #endif
   
