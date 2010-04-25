@@ -20,6 +20,27 @@
   #include <PID_Beta6.h> // library for PID temperature control
 #endif
 
+#include "WProgram.h"
+void setup();
+void loop();
+void get_command();
+void clear_buffer();
+void startup();
+void zero_xy();
+void zero_all_z();
+void compensate_toolhead_length();
+void set_toolhead_clearance();
+void process_commands(char command[], int command_length);
+void switch_tool(int new_tool);
+void get_coordinates(char command[]);
+void get_feedrate(char command[]);
+void get_acceleration_parameters(int x_steps_remaining, int y_steps_remaining, int z_steps_remaining, int e_steps_remaining);
+void get_acceleration_interval(int x_steps_remaining, int y_steps_remaining, int z_steps_remaining, int e_steps_remaining);
+void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remaining, int e_steps_remaining);
+void establishContact();
+void kill_all();
+int temp2analog(int celsius);
+int analog2temp(int raw);
 const boolean INVERT_X_DIR = false;
 const int X_MIN_ENDSTOP = X_MIN_PIN;
 const int X_MAX_ENDSTOP = X_MAX_PIN; 
@@ -139,11 +160,10 @@ int e_drive_type = 2;
 #endif
 
 // temperature control variables
-
-int thermocouplePin = TEMP_0_PIN;
-int heaterPin = HEATER_0_PIN;
 #if PID_CONTROL
   double Setpoint, Input, Output;
+  int thermocouplePin = TEMP_0_PIN;
+  int heaterPin = HEATER_0_PIN;
   PID myPID(&Input, &Output, &Setpoint,2,5,1);
   float Setpoint_max = 550.0;
   float Setpoint_min = 30.0;
@@ -871,7 +891,7 @@ void process_commands(char command[], int command_length) // deals with standard
           e_drive_type = (int)strtod(&command[strchr_pointer - command + 1], NULL);
           if (e_drive_type == 1 || e_drive_type == 2 || e_drive_type == 4 || e_drive_type == 8 || e_drive_type == 16 || e_drive_type == 32 || e_drive_type == 64) { // it is a valid type
             e_steps_per_inch = e_steps_per_inch*e_drive_type/old_drive_type;
-            #if !E_USE_DIRSTEP and !E_USE_DC
+            #if !E_USE_DIRSTEP
               cpwStepper_x.steptype(x_drive_type);
             #endif
           }
@@ -1652,7 +1672,7 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
             delayMicroseconds(3);
             digitalWrite(E_STEP_PIN, LOW);
-          #elif !E_USE_DC
+          #else
             cpwStepper_e.takestep(INVERT_E_DIR);
             previous_micros_e = micros();
           #endif
@@ -1669,7 +1689,7 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
             previous_micros_e = micros();
             delayMicroseconds(3);
             digitalWrite(E_STEP_PIN, LOW);
-          #elif !E_USE_DC
+          #else
             cpwStepper_e.takestep(!INVERT_E_DIR);
             previous_micros_e = micros();
           #endif
@@ -1756,7 +1776,7 @@ void kill_all() // activated through estop
   #if !Z_USE_DIRSTEP
     cpwStepper_z.disable();
   #endif
-  #if !E_USE_DIRSTEP and !E_USE_DC
+  #if !E_USE_DIRSTEP
     cpwStepper_e.disable();
   #endif
   
@@ -1841,5 +1861,18 @@ int analog2temp(int raw)
 #else
   return analogRead(thermocouplePin) * ((5.0*100.0)/1024.0);
 #endif
+}
+
+
+int main(void)
+{
+	init();
+
+	setup();
+    
+	for (;;)
+		loop();
+        
+	return 0;
 }
 
