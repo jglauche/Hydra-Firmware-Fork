@@ -9,7 +9,7 @@
 #define  E_STEPS_PER_MM 0.706
 #define  X_STEPS_PER_MM 10
 #define  Y_STEPS_PER_MM 10
-#define  Z_STEPS_PER_MM 3
+#define  Z_STEPS_PER_MM 320
 
 // machine specifications
 const float X_STROKE = 200; // (200 / 25.4); // inches of x axis travel

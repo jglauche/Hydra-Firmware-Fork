@@ -53,7 +53,7 @@ const int Y_MAX_ENDSTOP = Y_MAX_PIN;
 const boolean INVERT_Y_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 const boolean INVERT_Y_MAX_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 
-const boolean INVERT_Z_DIR = true;
+const boolean INVERT_Z_DIR = false;
 const int Z_DIR_PIN[4] = {Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN};
 const int Z_STEP_PIN[4] = {Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN};
 const int Z_MIN_ENDSTOP = Z_MIN_PIN; // note that all the Z min endstops can be wired together to reduce pin usage
@@ -1804,9 +1804,11 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
     }
   }
   else { // use incremental programming
+    /* temporary disabled due to bad incremental positioning implementation
     current_x = destination_x;
     current_y = destination_y;
     current_z = destination_z;
+  */ 
   }
   
   // done moving and position is updated, clear all steps
