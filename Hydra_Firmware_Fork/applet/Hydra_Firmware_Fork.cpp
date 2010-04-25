@@ -45,21 +45,21 @@ const boolean INVERT_X_DIR = false;
 const int X_MIN_ENDSTOP = X_MIN_PIN;
 const int X_MAX_ENDSTOP = X_MAX_PIN; 
 const boolean INVERT_X_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
-const boolean INVERT_X_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const boolean INVERT_X_MAX_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 
-const boolean INVERT_Y_DIR = false;
+const boolean INVERT_Y_DIR = true;
 const int Y_MIN_ENDSTOP = Y_MIN_PIN;
 const int Y_MAX_ENDSTOP = Y_MAX_PIN;
 const boolean INVERT_Y_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
-const boolean INVERT_Y_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const boolean INVERT_Y_MAX_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 
-const boolean INVERT_Z_DIR = false;
+const boolean INVERT_Z_DIR = true;
 const int Z_DIR_PIN[4] = {Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN, Z_DIR_PINN};
 const int Z_STEP_PIN[4] = {Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN, Z_STEP_PINN};
 const int Z_MIN_ENDSTOP = Z_MIN_PIN; // note that all the Z min endstops can be wired together to reduce pin usage
 const int Z_MAX_ENDSTOP = Z_MAX_PIN; // note that all the Z min endstops can be wired together to reduce pin usage
 const boolean INVERT_Z_MIN_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
-const boolean INVERT_Z_MAX_ENDSTOP = false; // true: low means switch is activated, false: high means switch is activated
+const boolean INVERT_Z_MAX_ENDSTOP = true; // true: low means switch is activated, false: high means switch is activated
 
 const boolean INVERT_E_DIR = false;
 
@@ -185,18 +185,18 @@ void setup() // initialization loop for pin types and initial values
   attachInterrupt(KILLPIN_INTERRUPT, kill_all, FALLING); // interrupt 2, digital pin 21
   
   pinMode(X_MIN_ENDSTOP, INPUT);
-  digitalWrite(X_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(X_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
   pinMode(Y_MIN_ENDSTOP, INPUT);
-  digitalWrite(Y_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(Y_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
   pinMode(Z_MIN_ENDSTOP, INPUT);
-  digitalWrite(Z_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(Z_MIN_ENDSTOP, HIGH); // enable 20k pullup resistor
   
   pinMode(X_MAX_ENDSTOP, INPUT);
-  digitalWrite(X_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(X_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
   pinMode(Y_MAX_ENDSTOP, INPUT);
-  digitalWrite(Y_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(Y_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
   pinMode(Z_MAX_ENDSTOP, INPUT);
-  digitalWrite(Z_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
+//  digitalWrite(Z_MAX_ENDSTOP, HIGH); // enable 20k pullup resistor
   
   #if X_USE_DIRSTEP
     pinMode(X_DIR_PIN, OUTPUT);
@@ -278,7 +278,7 @@ pinMode(Z_ENABLE_PIN, OUTPUT);
 digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(E_ENABLE_PIN, OUTPUT);
-digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+digitalWrite(E_ENABLE_PIN, LOW);
 
 
 

@@ -168,6 +168,8 @@
 #define LOW_HEAT_0 (byte)110
 #define HIGH_HEAT_0 (byte)255
 
+#define USE_EXTRUDER_CONTROLLER false
+
 /************************
 *  HYDRA PINS
 ************************/
