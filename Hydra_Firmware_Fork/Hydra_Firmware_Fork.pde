@@ -1783,7 +1783,7 @@ void linear_move(int x_steps_remaining, int y_steps_remaining, int z_steps_remai
     }
   }
   else { // use incremental programming
-    /* temporary disabled due to bad incremental positioning implementation
+    /* temporary disabled due to bad incremental positioning implementatio
     current_x = destination_x;
     current_y = destination_y;
     current_z = destination_z;
@@ -1830,6 +1830,23 @@ void establishContact() {
 void kill_all() // activated through estop
 {
   if (debugging == true) Serial.println("emergency stop activated!");
+  
+
+  if (X_ENABLE_PIN > 0){
+    digitalWrite(X_ENABLE_PIN, !ENABLE_ON);
+  }
+  
+  if (Y_ENABLE_PIN > 0){
+    digitalWrite(Y_ENABLE_PIN, !ENABLE_ON);
+  }
+  
+  if (Z_ENABLE_PIN > 0){
+    digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
+  }
+  
+  if (E_ENABLE_PIN > 0){
+    digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+  }
   
   #if !X_USE_DIRSTEP
     cpwStepper_x.disable();
