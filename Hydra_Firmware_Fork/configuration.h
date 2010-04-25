@@ -7,9 +7,9 @@
 #define USE_THERMISTOR //Comment out if using thermocouple
 
 #define  E_STEPS_PER_MM 0.706
-#define  X_STEPS_PER_MM 10.047
-#define  Y_STEPS_PER_MM 10.047
-#define  Z_STEPS_PER_MM 833.398
+#define  X_STEPS_PER_MM 10
+#define  Y_STEPS_PER_MM 10
+#define  Z_STEPS_PER_MM 3
 
 // machine specifications
 const float X_STROKE = (200 / 25.4); // inches of x axis travel

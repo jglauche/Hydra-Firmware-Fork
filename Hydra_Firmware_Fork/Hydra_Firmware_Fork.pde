@@ -257,7 +257,7 @@ pinMode(Z_ENABLE_PIN, OUTPUT);
 digitalWrite(Z_ENABLE_PIN, !ENABLE_ON);
 
 pinMode(E_ENABLE_PIN, OUTPUT);
-digitalWrite(E_ENABLE_PIN, !ENABLE_ON);
+digitalWrite(E_ENABLE_PIN, LOW);
 
 
 
